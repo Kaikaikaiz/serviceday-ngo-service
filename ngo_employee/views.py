@@ -8,7 +8,7 @@ Endpoints:
 """
 
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from rest_framework import status
@@ -17,20 +17,25 @@ from django.db.models import Count
 from ngo.models import NGO
 from .serializers import NGOEmployeeListSerializer, NGOEmployeeDetailSerializer
 
+# ── Permission: Admin only  ────────────────────
 
-# ── Permission: Employee only (Topic 7.3c) ────────────────────
-
-class IsEmployee(IsAuthenticated):
-    """
-    Blocks admins from accessing employee endpoints.
-    Admins use /api/v1/ngos/ instead.
-    """
+class IsAdminUser(BasePermission):
     def has_permission(self, request, view):
-        if not super().has_permission(request, view):
+        if not request.user:
             return False
-        if request.user.groups.filter(name='Administrator').exists():
+        groups = request.user.get('groups', [])
+        return 'Administrator' in groups
+
+# ── Permission: Employee only ────────────────────
+
+class IsEmployee(BasePermission):
+    def has_permission(self, request, view):
+        if not request.user:
             return False
-        return request.user.groups.filter(name='Employee').exists()
+        groups = request.user.get('groups', [])
+        if 'Administrator' in groups:
+            return False
+        return 'Employee' in groups
 
 
 # ── Helper ────────────────────────────────────────────────────
