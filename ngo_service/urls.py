@@ -29,5 +29,5 @@ urlpatterns = [
     path('api/v1/', include('ngo_employee.urls')),
  
     # ── Admin API (teammate's part) ───────────────────
-    #path('api/v1/', include('ngo_admin.urls')),
+    path('api/v1/', include('ngo_admin.urls')),
 ]

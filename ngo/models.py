@@ -41,10 +41,7 @@ class NGO(models.Model):
 
     @property
     def slots_taken(self):
-        count = getattr(self, 'registered_count', None)
-        if count is None:
-            count = self.registration_set.count()
-        return count
+        return getattr(self, 'registered_count', 0)
 
     @property
     def available_slots(self):
