@@ -14,8 +14,8 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework import status
 from django.db.models import Count
 
-from ngo.models import NGO
-from .serializers import NGOEmployeeListSerializer, NGOEmployeeDetailSerializer
+from ngo.models import NGO, Organizer, ServiceType
+from .serializers import NGOEmployeeListSerializer, NGOEmployeeDetailSerializer, OrganizerSerializer, ServiceTypeSerializer
 
 # ── Permission: Admin only  ────────────────────
 
@@ -109,6 +109,36 @@ def activity_detail(request, pk):
         )
     serializer = NGOEmployeeDetailSerializer(ngo)
     return Response(serializer.data)
+
+
+# ── Employee-accessible endpoints ─────────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([IsEmployee])
+def service_type_list(request):
+    """
+    GET /api/v1/service-types/
+    Employee can read service types for filter panel.
+    """
+    types = ServiceType.objects.all().order_by('name')
+    return Response({
+        'success': True,
+        'data': ServiceTypeSerializer(types, many=True).data
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsEmployee])
+def organizer_list(request):
+    """
+    GET /api/v1/organizers/
+    Employee can read organizers for filter panel.
+    """
+    organizers = Organizer.objects.all().order_by('company_name')
+    return Response({
+        'success': True,
+        'data': OrganizerSerializer(organizers, many=True).data
+    })
 
 
 # ── GET /api/v1/activities/benchmark/ ────────────────────────

@@ -21,8 +21,7 @@ class OrganizerSerializer(serializers.ModelSerializer):
 
 
 class NGOListSerializer(serializers.ModelSerializer):
-    """Lightweight serializer for list/pagination responses."""
-    service_type    = ServiceTypeSerializer(source="serviceType", read_only=True)
+    serviceType     = ServiceTypeSerializer(read_only=True)  # ← rename to serviceType
     organizer       = OrganizerSerializer(read_only=True)
     slots_taken     = serializers.IntegerField(read_only=True)
     available_slots = serializers.IntegerField(read_only=True)
@@ -33,9 +32,9 @@ class NGOListSerializer(serializers.ModelSerializer):
     class Meta:
         model  = NGO
         fields = [
-            "id", "name", "location", "service_date", "start_time", "end_time",
+            "id", "name", "location",'description', "service_date", "start_time", "end_time",
             "max_slots", "slots_taken", "available_slots", "is_full", "is_closed",
-            "is_active", "cutoff_datetime", "service_type", "organizer",
+            "is_active", "cutoff_datetime", "serviceType", "organizer",   # ← serviceType here too
             "created_at", "status",
         ]
 
