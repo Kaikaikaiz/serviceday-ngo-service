@@ -29,6 +29,9 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = ['*']
 
+REGISTRATION_SERVICE_URL = os.environ.get(
+    'REGISTRATION_SERVICE_URL', 'http://127.0.0.1:8003'
+)
 
 # Application definition
 

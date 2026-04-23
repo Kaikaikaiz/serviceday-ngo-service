@@ -16,7 +16,8 @@ from django.db.models import Count
 
 from ngo.models import NGO, Organizer, ServiceType
 from .serializers import NGOEmployeeListSerializer, NGOEmployeeDetailSerializer, OrganizerSerializer, ServiceTypeSerializer
-
+import requests
+from django.conf import settings
 # ── Permission: Admin only  ────────────────────
 
 class IsAdminUser(BasePermission):
@@ -56,7 +57,6 @@ def _get_active_ngos():
 @permission_classes([IsEmployee])
 def activity_list(request):
 
-    # ── Filtering ──────────────────────────────────
     date_from = request.query_params.get('date_from')
     date_to   = request.query_params.get('date_to')
     location  = request.query_params.get('location')
@@ -64,33 +64,46 @@ def activity_list(request):
     has_filters = any([date_from, date_to, location, name])
 
     if not has_filters:
-        # ──  Redis cache ───────────────────────
         from .services.ngo_service import NGOService
-        ngos       = NGOService.get_all_ngo_list_active()
-        serializer = NGOEmployeeListSerializer(ngos, many=True)
+        ngos = NGOService.get_all_ngo_list_active()
+    else:
+        qs = _get_active_ngos()
+        if date_from: qs = qs.filter(service_date__gte=date_from)
+        if date_to:   qs = qs.filter(service_date__lte=date_to)
+        if location:  qs = qs.filter(location__icontains=location)
+        if name:      qs = qs.filter(name__icontains=name)
+        ngos = list(qs)
+
+    # ← fetch registration counts from registration-service
+    counts = {}
+    try:
+        ngo_ids = ','.join([str(n.id) for n in ngos])
+        reg_resp = requests.get(
+            settings.REGISTRATION_SERVICE_URL + '/api/v1/registrations/counts/',
+            headers={'Authorization': request.headers.get('Authorization', '')},
+            params={'ngo_ids': ngo_ids},
+            timeout=3
+        )
+        if reg_resp.status_code == 200:
+            counts = reg_resp.json()
+    except Exception:
+        pass
+
+    # ← pass counts in context
+    context = {'registration_counts': counts}
+
+    if not has_filters:
+        serializer = NGOEmployeeListSerializer(ngos, many=True, context=context)
         return Response({
             'count':      len(ngos),
             'from_cache': True,
             'results':    serializer.data,
         })
 
-    # ── filtered: bypass cache, hit DB directly ───────────────
-    qs = _get_active_ngos()
-
-    if date_from:
-        qs = qs.filter(service_date__gte=date_from)
-    if date_to:
-        qs = qs.filter(service_date__lte=date_to)
-    if location:
-        qs = qs.filter(location__icontains=location)
-    if name:
-        qs = qs.filter(name__icontains=name)
-
-    # ── Pagination ─────────────────────────────────
-    paginator            = PageNumberPagination()
-    paginator.page_size  = 10
-    page       = paginator.paginate_queryset(list(qs), request)
-    serializer = NGOEmployeeListSerializer(page, many=True)
+    paginator = PageNumberPagination()
+    paginator.page_size = 10
+    page = paginator.paginate_queryset(ngos, request)
+    serializer = NGOEmployeeListSerializer(page, many=True, context=context)
     return paginator.get_paginated_response(serializer.data)
 
 
