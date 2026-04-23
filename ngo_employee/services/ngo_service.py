@@ -35,7 +35,6 @@ class NGOService:
                 NGO.objects
                 .filter(is_active=True, cutoff_datetime__gt=now)
                 .select_related('serviceType', 'organizer')
-                .annotate(registered_count=Count('registration'))
                 .order_by('name')
             )
             t_end  = time.perf_counter()

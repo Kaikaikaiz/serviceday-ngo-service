@@ -19,4 +19,4 @@ class StatelessJWTAuthentication(BaseAuthentication):
             raise AuthenticationFailed('Token expired')
         except Exception:
             raise AuthenticationFailed('Invalid token')
-        return (payload, token)  # payload acts as "user"
+        return (payload, token)

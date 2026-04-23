@@ -30,6 +30,7 @@ class IsAdminUser(BasePermission):
 
 class IsEmployee(BasePermission):
     def has_permission(self, request, view):
+        print(f"DEBUG request.user = {request.user}") 
         if not request.user:
             return False
         groups = request.user.get('groups', [])
@@ -45,7 +46,6 @@ def _get_active_ngos():
         NGO.objects
         .filter(is_active=True)
         .select_related('serviceType', 'organizer')
-        .annotate(registered_count=Count('registration'))
         .order_by('service_date')
     )
 
