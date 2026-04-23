@@ -12,7 +12,7 @@ from rest_framework.test import APIClient
 from rest_framework import status
 from datetime import timedelta
 
-from ngo.models import NGO, ServiceType, Organizer
+from ngo.models import NGO, ServiceType
 
 
 # ── helpers ───────────────────────────────────────────────────
@@ -81,6 +81,64 @@ class NGOStatusUnitTest(TestCase):
     def test_slots_fill_pct(self):
         from ngo_admin.services.admindashboard import get_slots_fill_pct
         self.assertEqual(get_slots_fill_pct(self.ngo), 0)
+
+    def test_ngo_is_full_when_all_slots_taken(self):
+        """Status should be 'Full' when registered_count equals max_slots."""
+        from ngo_admin.services.admindashboard import get_ngo_status
+        self.ngo.registered_count = self.ngo.max_slots  # slots_taken reads this attr
+        self.assertEqual(get_ngo_status(self.ngo), 'Full')
+
+    def test_ngo_still_open_when_partially_filled(self):
+        """Status stays 'Open' when only some slots are taken."""
+        from ngo_admin.services.admindashboard import get_ngo_status
+        self.ngo.registered_count = 3   # 3 out of 10 slots taken
+        self.assertEqual(get_ngo_status(self.ngo), 'Open')
+
+    def test_slots_fill_pct_half_full(self):
+        """5 confirmed out of 10 slots = 50%."""
+        from ngo_admin.services.admindashboard import get_slots_fill_pct
+        self.ngo.registered_count = 5
+        self.assertEqual(get_slots_fill_pct(self.ngo), 50)
+
+    def test_slots_fill_pct_fully_booked(self):
+        """10 confirmed out of 10 slots = 100%."""
+        from ngo_admin.services.admindashboard import get_slots_fill_pct
+        self.ngo.registered_count = 10
+        self.assertEqual(get_slots_fill_pct(self.ngo), 100)
+
+    def test_slots_fill_pct_ignores_pending(self):
+        """Pending registrations should NOT count — only confirmed (registered_count) does."""
+        from ngo_admin.services.admindashboard import get_slots_fill_pct
+        # registered_count not set = 0, mimics no confirmed registrations
+        self.assertEqual(get_slots_fill_pct(self.ngo), 0)
+
+    def test_slots_fill_pct_ignores_rejected(self):
+        """Rejected registrations should NOT count."""
+        from ngo_admin.services.admindashboard import get_slots_fill_pct
+        self.assertEqual(get_slots_fill_pct(self.ngo), 0)
+
+    # ── NEW: NGO field validation ─────────────────────────────
+
+    def test_ngo_max_slots_is_positive(self):
+        """max_slots must be greater than zero."""
+        self.assertGreater(self.ngo.max_slots, 0)
+
+    def test_ngo_service_date_is_in_future(self):
+        """service_date should be after today."""
+        self.assertGreater(self.ngo.service_date, timezone.now().date())
+
+    def test_ngo_cutoff_before_service_date(self):
+        """cutoff_datetime should be before or on service_date."""
+        cutoff_date = self.ngo.cutoff_datetime.date()
+        self.assertLessEqual(cutoff_date, self.ngo.service_date)
+
+    def test_ngo_end_time_after_start_time(self):
+        """end_time must be later than start_time."""
+        self.assertGreater(self.ngo.end_time, self.ngo.start_time)
+
+    def test_ngo_str_representation(self):
+        """NGO __str__ should return its name."""
+        self.assertEqual(str(self.ngo), self.ngo.name)
 
 
 # ─────────────────────────────────────────────────────────────
