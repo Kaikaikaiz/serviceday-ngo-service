@@ -8,6 +8,8 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.core.cache import cache
 from datetime import datetime
+import requests
+from django.conf import settings
 import time
 import logging
 
@@ -68,13 +70,35 @@ def get_all_ngos(search="", status_filter=""):
 
 def get_dashboard_stats():
     all_ngos = list(NGO.objects.all())
+    ngo_ids  = [n.id for n in all_ngos]
+
+    # ← fetch real counts from registration service
+    counts = {}
+    try:
+        resp = requests.get(
+            settings.REGISTRATION_SERVICE_URL + '/api/v1/registrations/counts/',
+            headers={'Authorization': f'Bearer {settings.INTERNAL_SERVICE_TOKEN}'},
+            params={'ngo_ids': ','.join(str(i) for i in ngo_ids)},
+            timeout=3,
+        )
+        if resp.status_code == 200:
+            counts = resp.json()
+        else:
+            print(f"REG SERVICE HTTP ERROR: {resp.status_code} {resp.text}")
+    except Exception:
+        pass  # fall back to 0 if registration service is down
 
     total_ngos          = len(all_ngos)
-    open_count          = sum(1 for n in all_ngos if not n.is_full and not n.is_closed and n.is_active)
-    total_registrations = sum(n.slots_taken for n in all_ngos)
+    total_registrations = sum(counts.get(str(n.id), 0) for n in all_ngos)
     total_max           = sum(n.max_slots for n in all_ngos)
-    fill_pct            = round(total_registrations / total_max * 100, 1) if total_max > 0 else 0.0
-
+    open_count          = sum(
+        1 for n in all_ngos
+        if n.is_active
+        and not n.is_closed
+        and counts.get(str(n.id), 0) < n.max_slots
+    )
+    fill_pct = round(total_registrations / total_max * 100, 1) if total_max > 0 else 0.0
+    print(f"TOTAL REG: {total_registrations}, FILL: {fill_pct}%")
     return {
         "total_ngos":          total_ngos,
         "open_count":          open_count,

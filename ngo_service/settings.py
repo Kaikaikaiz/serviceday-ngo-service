@@ -32,6 +32,10 @@ ALLOWED_HOSTS = ['*']
 REGISTRATION_SERVICE_URL = os.environ.get(
     'REGISTRATION_SERVICE_URL', 'http://127.0.0.1:8003'
 )
+INTERNAL_SERVICE_TOKEN = os.environ.get(
+    'INTERNAL_SERVICE_TOKEN',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjowLCJ1c2VybmFtZSI6Im5vdGlmaWNhdGlvbi1zZXJ2aWNlLWJvdCIsImdyb3VwcyI6WyJFbXBsb3llZSJdLCJleHAiOjQwNzA5MDg4MDB9.IGtg69tZ7mph5uQ-NWH4x44lJEBoGyhIXmnSmkUwKeE'
+)
 
 # Application definition
 
