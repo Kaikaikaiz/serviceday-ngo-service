@@ -32,7 +32,7 @@ class IsAdminUser(BasePermission):
 class IsEmployee(BasePermission):
     def has_permission(self, request, view):
         print(f"DEBUG request.user = {request.user}") 
-        if not request.user:
+        if not request.user or not isinstance(request.user, dict):
             return False
         groups = request.user.get('groups', [])
         if 'Administrator' in groups:
