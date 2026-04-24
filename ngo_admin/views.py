@@ -10,6 +10,8 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from rest_framework import status
 from django.db.models import Q
+import requests
+from django.conf import settings
 
 
 from ngo.models import NGO, ServiceType, Organizer
@@ -47,6 +49,19 @@ def _paginate(queryset, request):
     page                = paginator.paginate_queryset(queryset, request)
     return page, paginator
 
+def _get_registration_counts(ngo_ids, auth_header):
+    try:
+        resp = requests.get(
+            settings.REGISTRATION_SERVICE_URL + '/api/v1/registrations/counts/',
+            headers={'Authorization': auth_header},
+            params={'ngo_ids': ','.join([str(i) for i in ngo_ids])},
+            timeout=3
+        )
+        if resp.status_code == 200:
+            return resp.json()
+    except Exception:
+        pass
+    return {}
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAdminUser])
@@ -90,7 +105,9 @@ def ngo_list_create(request):
             ngos = [n for n in ngos if not n.is_active]
 
         page, paginator = _paginate(ngos, request)
-        serializer      = NGOListSerializer(page, many=True)
+        auth_header = request.headers.get('Authorization', '')
+        counts      = _get_registration_counts([n.id for n in page], auth_header)
+        serializer = NGOListSerializer(page, many=True, context={'registration_counts': counts})
 
         return Response({
             'success': True,
@@ -126,7 +143,10 @@ def ngo_detail(request, ngo_id):
         return Response({'success': False, 'message': 'NGO not found.'}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == 'GET':
-        return Response({'success': True, 'data': NGODetailSerializer(ngo).data})
+        auth_header = request.headers.get('Authorization', '')
+        counts      = _get_registration_counts([ngo.id], auth_header)
+        print(f"COUNTS: {counts}")
+        return Response({'success': True, 'data': NGODetailSerializer(ngo, context={'registration_counts': counts}).data})
 
     elif request.method in ['PUT', 'PATCH']:
         partial    = request.method == 'PATCH'

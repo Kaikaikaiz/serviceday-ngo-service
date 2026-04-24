@@ -112,7 +112,6 @@ def activity_list(request):
 @api_view(['GET'])
 @permission_classes([IsEmployee])
 def activity_detail(request, pk):
-    """UC2 — Full detail for a single activity."""
     try:
         ngo = _get_active_ngos().get(pk=pk)
     except NGO.DoesNotExist:
@@ -120,7 +119,22 @@ def activity_detail(request, pk):
             {'error': 'Activity not found.'},
             status=status.HTTP_404_NOT_FOUND
         )
-    serializer = NGOEmployeeDetailSerializer(ngo)
+
+    # ← fetch registration count for this single NGO
+    counts = {}
+    try:
+        reg_resp = requests.get(
+            settings.REGISTRATION_SERVICE_URL + '/api/v1/registrations/counts/',
+            headers={'Authorization': request.headers.get('Authorization', '')},
+            params={'ngo_ids': str(ngo.id)},
+            timeout=3
+        )
+        if reg_resp.status_code == 200:
+            counts = reg_resp.json()
+    except Exception:
+        pass
+
+    serializer = NGOEmployeeDetailSerializer(ngo, context={'registration_counts': counts})
     return Response(serializer.data)
 
 
