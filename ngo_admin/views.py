@@ -20,12 +20,18 @@ from .serializers import (
 )
 
 class IsAdminUser(BasePermission):
-
     def has_permission(self, request, view):
-        if not request.user:
+        user = request.user
+        if not user:
             return False
-        groups = request.user.get('groups', [])
-        return 'Administrator' in groups
+        # StatelessJWTAuthentication returns a dict payload
+        if isinstance(user, dict):
+            return 'Administrator' in user.get('groups', [])
+        # fallback for SessionAuthentication
+        return user.is_authenticated and (
+            user.is_staff or
+            user.groups.filter(name='Administrator').exists()
+        )
 
 
 def _get_ngo(ngo_id):
