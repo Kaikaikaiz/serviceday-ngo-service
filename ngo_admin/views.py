@@ -43,7 +43,7 @@ def _get_ngo(ngo_id):
 
 def _paginate(queryset, request):
     paginator           = PageNumberPagination()
-    paginator.page_size = 10
+    paginator.page_size = int(request.query_params.get('page_size', 10))  
     page                = paginator.paginate_queryset(queryset, request)
     return page, paginator
 
