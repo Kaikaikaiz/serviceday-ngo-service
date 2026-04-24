@@ -21,31 +21,57 @@ class OrganizerSerializer(serializers.ModelSerializer):
 
 
 class NGOListSerializer(serializers.ModelSerializer):
-    serviceType     = ServiceTypeSerializer(read_only=True)  # ← rename to serviceType
-    organizer       = OrganizerSerializer(read_only=True)
-    slots_taken     = serializers.IntegerField(read_only=True)
-    available_slots = serializers.IntegerField(read_only=True)
-    is_full         = serializers.BooleanField(read_only=True)
-    is_closed       = serializers.BooleanField(read_only=True)
-    status          = serializers.SerializerMethodField()
+    serviceType         = ServiceTypeSerializer(read_only=True)
+    organizer           = OrganizerSerializer(read_only=True)
+    slots_taken         = serializers.SerializerMethodField()
+    available_slots     = serializers.SerializerMethodField()
+    slots_taken_percent = serializers.SerializerMethodField()
+    is_full             = serializers.SerializerMethodField()
+    is_closed           = serializers.SerializerMethodField()
+    status              = serializers.SerializerMethodField()
 
     class Meta:
         model  = NGO
         fields = [
-            "id", "name", "location",'description', "service_date", "start_time", "end_time",
-            "max_slots", "slots_taken", "available_slots", "is_full", "is_closed",
-            "is_active", "cutoff_datetime", "serviceType", "organizer",   # ← serviceType here too
+            "id", "name", "location", "description", "service_date",
+            "start_time", "end_time", "max_slots", "slots_taken",
+            "available_slots", "slots_taken_percent", "is_full", "is_closed",
+            "is_active", "cutoff_datetime", "serviceType", "organizer",
             "created_at", "status",
         ]
 
+    def _get_taken(self, obj):
+        counts = self.context.get('registration_counts', {})
+        return counts.get(str(obj.id), counts.get(obj.id, 0))
+
+    def get_slots_taken(self, obj):
+        return self._get_taken(obj)
+
+    def get_available_slots(self, obj):
+        return max(obj.max_slots - self._get_taken(obj), 0)
+
+    def get_slots_taken_percent(self, obj):
+        taken = self._get_taken(obj)
+        if obj.max_slots == 0:
+            return 0
+        return round((taken / obj.max_slots) * 100)
+
+    def get_is_full(self, obj):
+        return self._get_taken(obj) >= obj.max_slots
+
+    def get_is_closed(self, obj):
+        return timezone.now() > obj.cutoff_datetime
+
     def get_status(self, obj):
+        taken     = self._get_taken(obj)
+        available = max(obj.max_slots - taken, 0)
         if not obj.is_active:
             return "inactive"
-        if obj.is_closed:
+        if timezone.now() > obj.cutoff_datetime:
             return "closed"
-        if obj.is_full:
+        if taken >= obj.max_slots:
             return "full"
-        if obj.available_slots <= obj.max_slots * 0.5:
+        if available <= obj.max_slots * 0.5:
             return "almost_full"
         return "open"
 
