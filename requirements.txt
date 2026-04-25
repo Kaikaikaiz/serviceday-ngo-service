@@ -1,6 +1,7 @@
 asgiref==3.11.1
 certifi==2026.2.25
 charset-normalizer==3.4.7
+dj-database-url==3.1.2
 Django==6.0.4
 django-filter==25.2
 django-redis==6.0.0
@@ -10,6 +11,7 @@ gunicorn==25.3.0
 idna==3.11
 packaging==26.1
 pillow==12.2.0
+psycopg2-binary==2.9.12
 PyJWT==2.12.1
 qrcode==8.2
 redis==7.4.0
