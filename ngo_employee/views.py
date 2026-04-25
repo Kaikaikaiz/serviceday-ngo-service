@@ -57,21 +57,23 @@ def _get_active_ngos():
 @permission_classes([IsEmployee])
 def activity_list(request):
 
+    service_date = request.query_params.get('service_date')
     date_from = request.query_params.get('date_from')
     date_to   = request.query_params.get('date_to')
     location  = request.query_params.get('location')
     name      = request.query_params.get('name')
-    has_filters = any([date_from, date_to, location, name])
+    has_filters = any([service_date, date_from, date_to, location, name])
 
     if not has_filters:
         from .services.ngo_service import NGOService
         ngos = NGOService.get_all_ngo_list_active()
     else:
         qs = _get_active_ngos()
-        if date_from: qs = qs.filter(service_date__gte=date_from)
-        if date_to:   qs = qs.filter(service_date__lte=date_to)
-        if location:  qs = qs.filter(location__icontains=location)
-        if name:      qs = qs.filter(name__icontains=name)
+        if service_date:    qs = qs.filter(service_date=service_date)
+        if date_from:       qs = qs.filter(service_date__gte=date_from)
+        if date_to:         qs = qs.filter(service_date__lte=date_to)
+        if location:        qs = qs.filter(location__icontains=location)
+        if name:            qs = qs.filter(name__icontains=name)
         ngos = list(qs)
 
     # ← fetch registration counts from registration-service
