@@ -65,7 +65,7 @@ def make_ngo(name='Test NGO', slots=10):
 # 13.1 UNIT TESTS (UNCHANGED COUNT)
 # ─────────────────────────────────────────────
 
-class NGOStatusUnitTest(TestCase):
+class NGOAdminUnitTest(TestCase):
 
     def setUp(self):
         self.ngo = make_ngo(slots=10)
@@ -226,3 +226,31 @@ class NGOAdminIntegrationTest(TestCase):
 
         ngo.refresh_from_db()
         self.assertEqual(ngo.name, 'Updated Name')
+
+    def test_delete_ngo_removes_from_db(self):
+        ngo = make_ngo('Delete Me')
+        ngo_id = ngo.id
+        self.client.delete(f'/api/v1/ngos/{ngo_id}/')
+        self.assertFalse(NGO.objects.filter(id=ngo_id).exists())
+
+    def test_toggle_active_reflects_in_db(self):
+        ngo = make_ngo('Toggle Test')
+        original = ngo.is_active
+        self.client.patch(f'/api/v1/ngos/{ngo.id}/toggle-active/')
+        ngo.refresh_from_db()
+        self.assertNotEqual(ngo.is_active, original)
+
+    def test_dashboard_stats_reflect_db(self):
+        make_ngo('NGO 1')
+        make_ngo('NGO 2')
+        resp = self.client.get('/api/v1/ngos/dashboard/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.data['success'])                          # check success flag
+        self.assertGreaterEqual(resp.data['data']['total_ngos'], 2)    # nested under 'data'
+        self.assertIn('open_count', resp.data['data'])                 # check other keys exist
+        self.assertIn('fill_pct', resp.data['data'])
+
+    def test_unauthenticated_cannot_create_ngo(self):
+        resp = unauth_client().post('/api/v1/ngos/', {'name': 'Hack'}, format='json')
+        self.assertIn(resp.status_code, [401, 403])
+        self.assertFalse(NGO.objects.filter(name='Hack').exists())
