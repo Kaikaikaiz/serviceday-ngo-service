@@ -7,6 +7,10 @@ Endpoints:
     GET /api/v1/activities/benchmark/  — cache before vs after (admin only, Topic 9.3)
 """
 
+from time import time
+
+from django.db import connection, reset_queries
+from django_redis import cache
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
@@ -21,8 +25,10 @@ from django.conf import settings
 # ── Permission: Admin only  ────────────────────
 
 class IsAdminUser(BasePermission):
+  
     def has_permission(self, request, view):
-        if not request.user:
+        # AnonymousUser is not a dict, so guard against it first
+        if not isinstance(request.user, dict):
             return False
         groups = request.user.get('groups', [])
         return 'Administrator' in groups
@@ -176,13 +182,9 @@ def organizer_list(request):
 @permission_classes([IsAdminUser])
 def cache_benchmark(request):
     """
-    Returns:
-    {
-        "db_query_ms":  15.2,
-        "cache_hit_ms":  0.4,
-        "speedup_x":    38.0,
-        "note": "Cache is ~38x faster than a DB query"
-    }
+    Topic 9.3 — Before vs After cache performance comparison.
+    Delegates all measurement logic to benchmark_ngo_cache().
     """
     from .services.cache_benchmark import benchmark_ngo_cache
-    return Response(benchmark_ngo_cache())
+    result = benchmark_ngo_cache()
+    return Response(result)
