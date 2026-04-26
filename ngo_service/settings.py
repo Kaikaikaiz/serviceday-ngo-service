@@ -52,7 +52,8 @@ INSTALLED_APPS = [
     'django_filters',
     'ngo',          
     'ngo_employee',  
-    'ngo_admin',     
+    'ngo_admin',
+    'drf_spectacular',
 ]
 
 MIDDLEWARE = [
@@ -149,6 +150,16 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'NGO Service API',
+    'DESCRIPTION': 'API documentation for the ngo service — ngo management and activity listing',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,  # hides the raw schema from the doc UIs
+    'SCHEMA_PATH_PREFIX': '/api/v1',
+    'COMPONENT_SPLIT_REQUEST': True,  # separates request vs response schemas
 }
  
 SIMPLE_JWT = {
